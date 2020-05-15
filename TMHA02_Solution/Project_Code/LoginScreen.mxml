@@ -1,0 +1,353 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:TitleWindow xmlns:mx="http://www.adobe.com/2006/mxml"
+	title="PACS Login [IN CONFIDENCE]" showCloseButton="false"
+	layout="absolute"
+	height="202"
+	width="370"
+	styleName="Canvas"
+	fontSize="11"
+	automationName="ComponentLoginScreen"
+	horizontalAlign="center"
+	verticalAlign="middle" creationComplete="init(event)">
+
+<mx:RemoteObject id="userSession" destination="userSession"
+			showBusyCursor="true" result="logoutResultHandler(event)" fault="initFaultHandler(event)"/> 
+	<mx:RemoteObject id="authenticator" destination="authenticator"
+			showBusyCursor="true" fault="faultHandler(event)">
+		<mx:method name="login" result="loginResultHandler(event)" />
+		<mx:method name="deleteUserConcurrentSession" result="deleteUserConcurrentSessionHandler(event)" fault="deleteConcurrSessFaultHandler(event)" />
+
+	</mx:RemoteObject>
+
+
+
+
+
+	<mx:states>
+		<mx:State id="stateLoginFailed" name="loginFailed">
+			<mx:AddChild position="firstChild">
+				<mx:Text id="failedMsg1" text="@Resource(bundle='messages', key='login.failedMesg')"
+					width="100%" color="red"
+					y="29" 
+					x="10"
+					automationName="txtLoginFailedMsg" />
+			</mx:AddChild>
+		</mx:State>
+
+		<mx:State id="stateConcurrentSession" name="ConcurrentSession">
+			<mx:AddChild position="firstChild">
+				<mx:Text id="failedMsg2" text="@Resource(bundle='messages', key='login.concurrentSession')"
+					width="100%" color="red"
+					y="29" 
+					x="10"
+					automationName="txtConcurrentSessionMsg" />
+			</mx:AddChild>
+		</mx:State>
+
+		<mx:State id="stateAccountLocked" name="AccountLocked">
+			<mx:AddChild position="firstChild">
+				<mx:Text id="failedMsg3" text="@Resource(bundle='messages', key='login.accountLockMsg')"
+					width="100%" color="red"
+					y="29" 
+					x="10"
+					automationName="txtAccountLockedMsg" />
+			</mx:AddChild>
+		</mx:State>
+		
+		<mx:State id="statePasswordExpired" name="PasswordExpired">
+			<mx:AddChild position="firstChild">
+				<mx:Text id="failedMsg4" text="@Resource(bundle='messages', key='login.passwordExpiredMsg')"
+					width="100%" color="red"
+					y="29" 
+					x="10"
+					automationName="txtPasswordExpiredMsg" />
+			</mx:AddChild>
+		</mx:State>
+
+		<mx:State id="stateUnexpectedError" name="UnexpectedError">
+			<mx:AddChild position="firstChild">
+				<mx:Text id="failedMsg5" text="@Resource(bundle='messages', key='login.UnexpectedErrorMsg')"
+					width="100%" color="red"
+					y="29" 
+					x="10"
+					automationName="txtUnexpectedError" />
+			</mx:AddChild>
+		</mx:State>
+		<mx:State id="stateUnderMaintainance" name="AppUnderMntnace">
+			<mx:AddChild position="firstChild">
+				<mx:Text id="failedMsg6" text="@Resource(bundle='messages', key='login.appMaintainance')"
+					width="100%" color="red"
+					y="29" 
+					x="10"
+					automationName="txtUnderMaintainance" />
+			</mx:AddChild>
+		</mx:State>
+	</mx:states>
+
+	<mx:transitions>
+		<mx:Transition id="transLoginFailed" fromState="*" toState="loginFailed">
+			<mx:Parallel target="{failedMsg1}">
+				<mx:Resize duration="400"/>
+			</mx:Parallel>
+		</mx:Transition>
+
+		<mx:Transition id="transConcurrentSession" fromState="*" toState="ConcurrentSession">
+			<mx:Parallel target="{failedMsg2}">
+				<mx:Resize duration="400"/>
+			</mx:Parallel>
+		</mx:Transition>
+
+		<mx:Transition id="transAccountLock" fromState="*" toState="AccountLocked">
+			<mx:Parallel target="{failedMsg3}">
+				<mx:Resize duration="400"/>
+			</mx:Parallel>
+		</mx:Transition>
+
+		<mx:Transition id="transPasswordExpired" fromState="*" toState="PasswordExpired">
+			<mx:Parallel target="{failedMsg4}">
+				<mx:Resize duration="400"/>
+			</mx:Parallel>
+		</mx:Transition>
+
+		<mx:Transition id="transUnexpectedError" fromState="*" toState="UnexpectedError">
+			<mx:Parallel target="{failedMsg5}">
+				<mx:Resize duration="400"/>
+			</mx:Parallel>
+		</mx:Transition>
+
+		<mx:Transition id="transAppMaintainance" fromState="*" toState="AppUnderMntnace">
+			<mx:Parallel target="{failedMsg6}">
+				<mx:Resize duration="400"/>
+			</mx:Parallel>
+		</mx:Transition>
+		
+	</mx:transitions>
+
+	<mx:Script>
+		<![CDATA[
+			import dashboard.NewDashboard;
+			import utils.RPACSConstants;
+			import utils.FaultHandler;
+			import mx.managers.PopUpManager;
+			import mx.containers.*;
+			import mx.modules.*;
+			import mx.controls.*;
+			import mx.events.*;
+			import mx.core.*;
+			import mx.managers.*;
+			import mx.rpc.events.*;
+			import utils.ModelPopupWindow; 
+			import projects.logicalPlanning.utils.widgets.genericalert.GenericAlertNotification;
+			
+			import model.*;
+
+
+
+			private var modelPopupWindow:ModelPopupWindow;
+ 			private var modelPopupWindowShown:Boolean;
+
+			private var refId:String=null;
+
+			private function showConcurrentSessInfo():void {
+				//GenericAlertNotification.showConfirmation("There is a running sessions found for this user,\nAre you sure you want to clear this session? ", processConcurrSessCleanup, "Session Cleanup Confirmation");
+				GenericAlertNotification.showConfirmation("There is a running session found for this user and multiple user sessions with the same user credentials are temporarily not available. You may start an additional session from an alternative userid.\nDo you want to end the previous session and log in again?", processConcurrSessCleanup, "Session Cleanup Confirmation");				
+			}
+			
+			private function showPacsSessInfo():void {
+				GenericAlertNotification.showError("Your User has an Existing Session in CLASSIC PACS, Please Log out from CLASSIC PACS to access RPACS", "Pacs Session Error");
+								
+			}
+			
+			private function showGBSessInfo():void {
+				GenericAlertNotification.showError("Your User has an Existing Session in GB, Please Log out from GB to access RPACS","GB Session Error");			
+			}
+			
+
+			private function processConcurrSessCleanup(eventObj:CloseEvent):void{
+				if (eventObj.detail==1 || eventObj.detail==Alert.OK) {
+					if(refId!=null){
+						authenticator.deleteUserConcurrentSession(refId);
+					}
+				}
+			}
+			
+			/**
+			 * Model Window Method Start
+			 */
+			    public function showModelPopup(windowTitle:String = null, message:String = null):void{                
+			       if(modelPopupWindowShown==false){
+				    var popUpInstance:ModelPopupWindow = ModelPopupWindow(PopUpManager.createPopUp(MainScreen.appArea, ModelPopupWindow, true));
+
+				    if(message != null){
+				       popUpInstance.message = message;
+				    }
+				    
+				    if(windowTitle != null){
+					popUpInstance.windowTitle = windowTitle;
+				    }
+				     
+				    popUpInstance.callingForm = this;
+				    PopUpManager.centerPopUp(popUpInstance);                
+				    this.modelPopupWindow = popUpInstance;
+				    modelPopupWindowShown = true;
+			       }                
+			    }
+			    
+			    public function hideModelPopup():void{  
+				if(modelPopupWindowShown){           
+				    if(this.modelPopupWindow != null){
+								this.modelPopupWindow.closeWindow();
+							}
+							modelPopupWindowShown = false;
+				}
+			    }
+					/**
+			 * Model Window Method End
+			 */
+
+
+			private function doLogin():void {
+				if(login.text=="" || password.text==""){
+					okButton.enabled=true;
+					currentState="loginFailed";
+				}
+				else{
+					okButton.enabled=false;
+					refId=login.text;
+					authenticator.login(login.text, password.text);
+				}
+			}
+			
+			private function init(e:FlexEvent):void{
+			  this.isPopUp =false;
+			  if(ExternalInterface.available){
+				  ExternalInterface.call('setLoginFocus');
+			  }
+			  login.setFocus();
+			  
+
+			  }
+			
+
+			private function logoutResultHandler(event:ResultEvent):void {
+				//do nothing
+			}
+			
+			private function initFaultHandler(event:FaultEvent):void{
+				//do nothing
+			}
+
+
+
+			private function deleteUserConcurrentSessionHandler(event:ResultEvent):void {
+				if (event.result != null) {
+					var status:String=event.result as String;
+					if(status == "success"){
+						GenericAlertNotification.showInfo("The session deleted succesfully, Please close the browser and login again.");
+					}
+				}
+			}
+
+
+			/*Sandip D: 2-12-2008 changes start : changed methods to avoid storing of user credentials in stack trace after error*/
+			private function loginResultHandler(event:ResultEvent):void {
+				okButton.enabled = true;
+				if (event.result != null) 
+				{				
+					MainScreen.currentUser = User(event.result);							
+					NewDashboard.currentUser =  User(event.result);
+					if(MainScreen.currentUser.errorMessage!=null)
+					{
+						if(MainScreen.currentUser.errorMessage == "java.sql.SQLException: Concurrent Session"){
+							//currentState="ConcurrentSession";
+							showConcurrentSessInfo();
+						}
+						else if(MainScreen.currentUser.errorMessage == RPACSConstants.PACS_SESSION_ERROR){
+							showPacsSessInfo();
+						}
+						else if(MainScreen.currentUser.errorMessage == RPACSConstants.GB_SESSION_ERROR){
+							showGBSessInfo();
+						}
+						else if(MainScreen.currentUser.errorMessage==RPACSConstants.USER_ORA_INVALID_LOGIN_ID_PASSWORD_MSG){
+							currentState="loginFailed";
+						}
+						else if(MainScreen.currentUser.errorMessage==RPACSConstants.USER_ORA_ACCOUNT_LOCKED_MSG){	
+							currentState="AccountLocked";
+						}
+						else if(MainScreen.currentUser.errorMessage==RPACSConstants.USER_ORA_PWD_EXPIRED_MSG){	
+							currentState="PasswordExpired";
+						}
+						else if(MainScreen.currentUser.errorMessage=="APPLICATION_UNDER_MAINTAINENCE"){	
+							currentState="AppUnderMntnace";
+							userSession.terminate();
+						}
+						
+						
+					}
+					else
+					{
+						PopUpManager.removePopUp(this);
+						LoginScreenQuestion.currentUser = User(event.result);
+						var p:LoginScreenQuestion = LoginScreenQuestion(PopUpManager.createPopUp(this, LoginScreenQuestion, true));
+						PopUpManager.centerPopUp(p);
+					}				
+				}
+				else
+				{
+					currentState = "UnexpectedError";
+				}
+			}
+
+			private function faultHandler(event:FaultEvent):void {
+				okButton.enabled = true;
+				FaultHandler.getInstance().displayError(event);
+			}
+
+
+			private function deleteConcurrSessFaultHandler(event:FaultEvent):void {
+				FaultHandler.getInstance().displayError(event);
+			}
+			
+			/*Sandip D: 2-12-2008 changes end : methods changed to avoid storing of user credentials in stack trace after error*/
+
+			// Fix for Defect 229
+			private function alternateLogin(event:KeyboardEvent):void
+			{
+				if (event.keyCode == Keyboard.ENTER)
+				{
+					//okButton.dispatchEvent(new MouseEvent(MouseEvent.CLICK));
+					doLogin();
+				}
+			}
+		]]>
+	</mx:Script>
+
+		<mx:Label id="userLabel" text="@Resource(bundle='messages', key='login.username')"
+			x="29"
+			y="67"
+			automationName="lblUserName"/>
+	<mx:TextInput id="login" maxChars="25" enter="doLogin()" text=""  
+			x="121"
+			y="65"
+			styleName="TextInput" 
+			automationName="txtUserName"/>
+		<mx:Label id="passwordLabel" text="@Resource(bundle='messages', key='login.password')"
+			x="29"
+			y="107"
+			automationName="lblPassword"/>
+	<mx:TextInput id="password" displayAsPassword="true" maxChars="25" enter="doLogin()" text=""
+			x="121"
+			y="105"
+			styleName="TextInput"
+			automationName="txtPassword"/>
+	
+		<mx:ControlBar horizontalAlign="right">
+			<mx:Button id="okButton" label="@Resource(bundle='messages', key='login.button.login')"
+				x="187"
+				y="149"
+				styleName="Button"
+				automationName="btnLogin"
+				click="doLogin()" keyDown="alternateLogin(event)" />
+		</mx:ControlBar>
+	<mx:Style source="css/skin5.css"/>
+</mx:TitleWindow>

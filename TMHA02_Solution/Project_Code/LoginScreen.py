@@ -1,0 +1,104 @@
+import os
+import xml.etree.ElementTree as ET
+#converting mxml to xml
+new_file = open("LoginScreen.xml", "w")
+with open("LoginScreen.mxml", "r") as f:
+    new_file.write(f.read())
+new_file.close()
+fname = os.path.splitext("LoginScreen.xml")[0]
+output_file = open(fname+".html","w");
+
+tree = ET.parse("LoginScreen.xml")
+root = tree.getroot()
+
+print(root.tag)
+print(root.attrib)
+
+children = root.getchildren()
+
+for child in children:
+    ET.dump(child)
+
+content="""
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>DEMO</title>
+
+<link rel="shortcut icon"  href="images/klulogo.jpg" />
+<link href='https://fonts.googleapis.com/css?family=Roboto+Slab:400,100,300,700|Lato:400,100,300,700,900' rel='stylesheet' type='text/css'>
+<link rel="stylesheet" href="css/animate.css">
+<!-- Custom Stylesheet -->
+<link rel="stylesheet" href="css/style.css">
+
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+<style>
+header 
+{
+  background-color: #5D92B1;
+  padding: 10px;
+  text-align: center;
+  font-size: 20px;
+  color: white;
+}
+</style>
+</head>
+
+<body>
+<header>
+  <h2>PACS - Planning, Assignment and Configuration System</h2>
+</header>
+<div class="container" style="margin: 0 auto; width:855px;">
+
+<div class="login-box animated fadeInUp" style="margin-top: 0%" style="max-width: 500px;">
+<div class="box-header"  style="backgroun-color:#C3E4ED" style="max-width: 500px;">
+<h2 style="background-color: #5D92B1;">PACS [In Confidence]</h2>
+</div>
+<form action="checkadmin.jsp" method="post">
+<label for="loginid" style="font-weight:bold;"><b>USERNAME</b></label>
+<br/>
+<input type="text" id="username" name="aid" required>
+<br/>
+<label for="password"><b>PASSWORD</b></label>
+<br/>
+<input type="password" id="password" name="pwd" required>
+<br/>
+<input type="checkbox" name="checkbox" value="check" id="agree" required><font color="black" style="font-size:16px;font-weight:bolder">I have read and agree to the Terms and Conditions and Privacy Policy</font>
+<br><br><br>
+<button type="submit" class="btn btn-primary" style=" background-color: #5D92B1;">Login</button>
+<br/>
+  </form>
+<a href="#"><p class="small"></p></a>
+</div>
+</div>
+</body>
+
+<script>
+$(document).ready(function () {
+    $('#logo').addClass('animated fadeInDown');
+    $("input:text:visible:first").focus();
+});
+$('#username').focus(function() {
+$('label[for="username"]').addClass('selected');
+});
+$('#username').blur(function() {
+$('label[for="username"]').removeClass('selected');
+});
+$('#password').focus(function() {
+$('label[for="password"]').addClass('selected');
+});
+$('#password').blur(function() {
+$('label[for="password"]').removeClass('selected');
+});
+</script>
+
+</html>
+"""
+
+output_file.write(content)
+output_file.close()
+
+print("Done :)")
+
+
